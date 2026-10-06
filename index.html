@@ -37,7 +37,7 @@
 }
 
 *,*::before,*::after{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:calc(var(--hh) + 80px)}
+html{-webkit-text-size-adjust:100%;scroll-padding-top:calc(var(--hh) + 80px)}
 html.lock{overflow:hidden}
 body{
   margin:0;min-height:100vh;overflow-x:hidden;
@@ -549,7 +549,7 @@ main,header,footer{position:relative;z-index:3}
         <span class="pill">📍 Jardim Esplanada • São José dos Campos</span>
       </div>
       <div class="hero-cta hero-fade">
-        <a class="btn btn-primary" href="#menu">Explorar cardápio
+        <a class="btn btn-primary" href="#menu" id="cta-menu">Explorar cardápio
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
         </a>
         <button class="btn btn-ghost" type="button" id="cta-dia">Pratos do dia
@@ -1072,8 +1072,8 @@ function setCategory(id, scroll=true){
   if (scroll) scrollToMenu();
 }
 function scrollToMenu(){
-  const bar = $("#cat-bar");
-  const y = $("#menu .menu-intro").getBoundingClientRect().bottom + scrollY - parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--hh")) + 8;
+  const intro = $("#menu .menu-intro");
+  const y = intro.getBoundingClientRect().bottom + parseFloat(getComputedStyle(intro).marginBottom) + scrollY - $("#header").offsetHeight + 1;
   if (Math.abs(scrollY - y) > 40) window.scrollTo({top:y, behavior: reduced ? "auto" : "smooth"});
 }
 function moveIndicator(instant=false){
@@ -1259,6 +1259,8 @@ function bindEvents(){
     setCategory(b.dataset.cat);
   });
   $("#cta-dia").addEventListener("click", () => setCategory("dia"));
+  $("#cta-menu").addEventListener("click", e => { e.preventDefault(); scrollToMenu(); });
+  $(".brand").addEventListener("click", e => { e.preventDefault(); window.scrollTo({top:0, behavior: reduced ? "auto" : "smooth"}); });
 
   // cards (delegação)
   $("#sections").addEventListener("click", e => {
@@ -1332,6 +1334,17 @@ function clearSearch(){
   input.value = ""; $("#search-box").classList.remove("has-value");
   state.q = ""; applyFilter(false);
 }
+function initStuckBar(){
+  const bar = $("#cat-bar"), menu = $("#menu");
+  const upd = () => {
+    const hh = $("#header").offsetHeight;
+    const r = bar.getBoundingClientRect(), m = menu.getBoundingClientRect();
+    bar.classList.toggle("stuck", r.top <= hh + 1 && m.bottom > hh + r.height);
+  };
+  addEventListener("scroll", upd, {passive:true});
+  addEventListener("resize", upd);
+  upd();
+}
 function setHeaderHeight(){
   document.documentElement.style.setProperty("--hh", $("#header").offsetHeight + "px");
 }
@@ -1366,19 +1379,13 @@ function initMotion(){
   // Parallax do hero
   gsap.to(".arch img", {yPercent:-12, ease:"none", scrollTrigger:{trigger:"#hero", start:"top top", end:"bottom top", scrub:true}});
   gsap.to(".bg-word", {xPercent:-22, ease:"none", scrollTrigger:{trigger:"#hero", start:"top top", end:"bottom top", scrub:true}});
-  gsap.to(".hero-copy", {y:-80, opacity:.15, ease:"none", scrollTrigger:{trigger:"#hero", start:"35% top", end:"bottom top", scrub:true}});
+  gsap.to(".hero-copy", {y:-70, ease:"none", scrollTrigger:{trigger:"#hero", start:"top top", end:"bottom top", scrub:true, invalidateOnRefresh:true}});
   gsap.to(".hero-visual", {y:60, ease:"none", scrollTrigger:{trigger:"#hero", start:"top top", end:"bottom top", scrub:true}});
 
   // Introdução do menu
   gsap.from(".menu-intro > *", {opacity:0, y:50, stagger:.12, duration:1.1, ease:"expo.out", scrollTrigger:{trigger:".menu-intro", start:"top 85%"}});
   gsap.from("#cat-track", {opacity:0, y:30, scale:.96, duration:1, ease:"expo.out", scrollTrigger:{trigger:"#cat-bar", start:"top 90%"}});
 
-  // Barra de categorias "grudada"
-  ScrollTrigger.create({
-    trigger:"#cat-bar", start:() => `top ${parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--hh"))+1}px`,
-    endTrigger:"#menu", end:"bottom top",
-    toggleClass:{targets:"#cat-bar", className:"stuck"}
-  });
 
   // Cabeçalhos de seção
   $$(".sec-head").forEach(h => {
@@ -1594,6 +1601,7 @@ function initScene(){
 render();
 setHeaderHeight();
 bindEvents();
+initStuckBar();
 applyFilter(false);
 initTilt();
 scene = initScene();
